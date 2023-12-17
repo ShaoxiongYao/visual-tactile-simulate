@@ -6,8 +6,10 @@ Currently simulate *quasi-static* linear FEM models.
 
 Key features:
 + Stable simulation from stable implicit equilibrium solving. 
-+ Flexible to different material models, stiffness matrices are derived from elastic energy using PyTorch auto-diff.
++ Flexible to different material models, 
+    - stiffness matrices are derived from elastic energy using PyTorch auto-diff.
 + Efficeincy from sparse linear solver. 
+    - solve one time step for ~4000 tetrahedra mesh takes 0.03s
 
 Example of tree deformation: 
 
