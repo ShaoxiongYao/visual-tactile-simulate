@@ -18,3 +18,12 @@ Example of cube simulation, red arrow indicates pushed deformation, green arrow 
 Example of tree deformation: 
 
 ![sim_tree](https://github.com/ShaoxiongYao/visual-tactile-simulate/assets/49648374/0a2e33f1-69d6-4223-9223-a4374959a4c8)
+
+
+Testing scripts:
+
+```
+python tests/test_sim_tree.py
+```
+
+The simulation of the tree deformation will be displayed.
