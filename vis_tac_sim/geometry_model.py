@@ -7,7 +7,7 @@ import open3d as o3d
 import torch
 from sklearn.neighbors import NearestNeighbors, kneighbors_graph
 
-from o3d_utils import create_motion_lines
+from .o3d_utils import create_motion_lines
 
 class GlobalDeformModel:
     def __init__(self) -> None:

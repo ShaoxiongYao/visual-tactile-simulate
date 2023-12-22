@@ -8,9 +8,9 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
 
-from material_model import BaseMaterialModel
-from object_model import ObjectModel
-from sim_utils import solve_deform_sparse
+from .material_model import BaseMaterialModel
+from .object_model import ObjectModel
+from .sim_utils import solve_deform_sparse
 
 class QuasiStaticSim:
     def __init__(self, object_model: ObjectModel, curr_points=None, material_values=None):

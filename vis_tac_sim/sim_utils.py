@@ -3,7 +3,6 @@ import time
 import torch
 import numpy as np
 
-from material_model import BaseMaterialModel
 from scipy.sparse import coo_matrix
 from scipy.sparse import linalg as splinalg
 

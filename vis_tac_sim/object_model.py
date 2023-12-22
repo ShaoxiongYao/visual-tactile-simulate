@@ -9,8 +9,8 @@ from scipy.spatial import Delaunay
 from sklearn.neighbors import kneighbors_graph, radius_neighbors_graph
 from itertools import combinations
 
-from geometry_model import GlobalDeformModel, NodeGraph
-from material_model import BaseMaterialModel, LinearSpringModel
+from .geometry_model import GlobalDeformModel, NodeGraph
+from .material_model import BaseMaterialModel, LinearSpringModel
 
 ASSET_PATH = os.path.join(os.path.dirname(__file__), "assets")
 
