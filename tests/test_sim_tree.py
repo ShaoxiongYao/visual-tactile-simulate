@@ -26,12 +26,8 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=True)
     np.random.seed(1)
 
-    tet_tree_mesh = pv.read('assets/tet_tree.msh')
-    tet_tree_mesh.plot()
-
-    rest_pts = np.array(tet_tree_mesh.points)
-    elements_lst = tet_tree_mesh.cells.reshape(-1, 5)[:, 1:]
-    elements_lst = np.append(elements_lst, [[1257, 338, 1401, 475]], axis=0) # HACK: add one tetra
+    rest_pts = np.load('assets/tet_tree_pts.npy')
+    elements_lst = np.load('assets/tet_tree_elements.npy')
 
     obj_model = ObjectModel(rest_points=rest_pts, element_lst=elements_lst,
                             material_model=LinearTetraModel())
