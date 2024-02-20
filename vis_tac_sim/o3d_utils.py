@@ -79,11 +79,23 @@ def create_arrow_lst(p1_ary, p2_ary, **args):
             arrow_lst.append(create_vector_arrow(p2, origin=p1, **args))
     return arrow_lst
 
+def set_view_params(o3d_vis, view_params={}):
+    ctr = o3d_vis.get_view_control()
+    if "zoom" in view_params.keys():
+        ctr.set_zoom(view_params["zoom"])
+    if "front" in view_params.keys():
+        ctr.set_front(view_params["front"])
+    if "lookat" in view_params.keys():
+        ctr.set_lookat(view_params["lookat"])
+    if "up" in view_params.keys():
+        ctr.set_up(view_params["up"])
 
-def select_points(pcd):
+def select_points(pcd, view_params=None):
     vis = o3d.visualization.VisualizerWithEditing()
     vis.create_window()
     vis.add_geometry(pcd)
+    if view_params is not None:
+        set_view_params(vis, view_params)
     vis.run()  # user picks points
     vis.destroy_window()
     return vis.get_picked_points()
