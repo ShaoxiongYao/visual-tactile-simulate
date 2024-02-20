@@ -13,7 +13,7 @@ if __name__ == "__main__":
     rest_pts = np.load('assets/new_orange_tree_pts.npy')
 
     node_graph = NodeGraph(rest_pts, num_nns=8)
-    # pickle.dump(node_graph, open('assets/orange_tree_node_graph.pkl', 'wb'))
+    # pickle.dump(node_graph, open('assets/new_orange_tree_node_graph.pkl', 'wb'))
     edges_lst = node_graph.compute_edges(connect_pattern='knn')
     np.save('assets/new_orange_tree_edges.npy', edges_lst)
 
@@ -31,11 +31,11 @@ if __name__ == "__main__":
 
     print('new_obb_center:', new_obb.center)
 
-    fix_mask = np.array(pcd.points)[:, 0] > 0.1
+    fix_mask = np.array(pcd.points)[:, 0] < -1.0
     colors = np.zeros_like(rest_pts)
     colors[fix_mask] = [1.0, 0.0, 0.0]
     colors[~fix_mask] = [0.0, 1.0, 0.0]
     pcd.colors = o3d.utility.Vector3dVector(colors)
     o3d.visualization.draw_geometries([pcd, coord_frame])    
 
-    # np.save('assets/new_orange_tree_fix_idx.npy', np.where(fix_mask)[0])
+    np.save('assets/new_orange_tree_fix_idx.npy', np.where(fix_mask)[0])

@@ -24,6 +24,13 @@ view_params = {
     "zoom" : 0.67999999999999994
 }
 
+view_params = {
+    "front" : [ 0.41634538001016846, -0.39068381489936144, 0.82098884360256086 ],
+    "lookat" : [ 0.85919311809081156, 0.89302042215447397, 2.4507354194025086 ],
+    "up" : [ -0.075146698770174505, -0.91466986839291886, -0.39715488857374692 ],
+    "zoom" : 0.41999999999999971
+}
+
 all_pts_view = {	
     "front" : [ 0.84524418474615381, 0.093060768835465241, -0.52621474842174654 ],
     "lookat" : [ -9.2476893922056078, 2.199256716604217, 9.529552884491423 ],
@@ -31,22 +38,45 @@ all_pts_view = {
     "zoom" : 0.21999999999999958
 }
 
+all_pts_view = {
+    "front" : [ -0.39269290110359634, 0.061343612133974039, -0.91762151602564213 ],
+    "lookat" : [ -0.0081280973560301471, 1.4773739719055841, 0.92505969280413958 ],
+    "up" : [ 0.16282711958558563, -0.97737255797027411, -0.13501930252413807 ],
+    "zoom" : 0.55999999999999983
+}
+
+all_pts_view = {	
+    "front" : [ -0.15533664909224087, 0.29827835679396886, -0.94175397387910398 ],
+    "lookat" : [ -0.0081280973560301471, 1.4773739719055841, 0.92505969280413958 ],
+    "up" : [ 0.011459743267594439, -0.952717583930761, -0.30364103733417541 ],
+    "zoom" : 0.059999999999999609
+}
+
 if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=True)
     np.random.seed(1)
 
-    all_pts = np.load('/home/motion/gaussian-splatting/output/debug/points.npy')
+    all_pcd = o3d.io.read_point_cloud('/home/motion/gaussian-splatting/output/9f74df28-d/point_cloud/iteration_30000/point_cloud.ply')
+    all_pts = np.array(all_pcd.points)
+    # all_pts = np.load('/home/motion/gaussian-splatting/output/debug/points.npy')
     # all_pts = np.load('/home/motion/gaussian-splatting/output/debug/orange_tree_raw_pts.npy')
 
-    rest_pts = np.load('assets/orange_tree_pts.npy')
-    elements_lst = np.load('assets/orange_tree_edges.npy')
-    fix_idx = np.load('assets/orange_tree_fix_idx.npy')
+    rest_pts = np.load('assets/new_orange_tree_pts.npy')
+    elements_lst = np.load('assets/new_orange_tree_edges.npy')
+    fix_idx = np.load('assets/new_orange_tree_fix_idx.npy')
+    
+    # colors = np.zeros_like(rest_pts)
+    # colors[fix_idx] = [1.0, 0.0, 0.0]
+    # pcd = o3d.geometry.PointCloud()
+    # pcd.points = o3d.utility.Vector3dVector(rest_pts)
+    # pcd.colors = o3d.utility.Vector3dVector(colors)
+    # o3d.visualization.draw_geometries([pcd])
 
-    node_graph:NodeGraph = pickle.load(open('assets/orange_tree_node_graph.pkl', 'rb'))
+    node_graph:NodeGraph = pickle.load(open('assets/new_orange_tree_node_graph.pkl', 'rb'))
     obj_model = ObjectModel(rest_points=rest_pts, element_lst=elements_lst,
                             geometry_model=node_graph, material_model=LinearSpringModel())
     
-    all_pts_beta = node_graph.get_sparse_beta(all_pts)
+    all_pts_beta = node_graph.get_sparse_beta(all_pts, rbf_w_max=0.2)
 
     start_time = time.time()
     material_values = obj_model.unit_material_values(dtype='list')
@@ -60,14 +90,13 @@ if __name__ == "__main__":
     touch_sampler.set_fix_idx(fix_idx)
 
     allow_touch_idx = select_points(obj_model.get_obj_pcd(), view_params=view_params)
-    # allow_touch_idx = [5358, 3816]
     touch_sampler.set_allow_touch_idx(allow_touch_idx)
     touch_idx, touch_u = touch_sampler.sample_touch(touch_num, touch_dir=touch_dir)
 
     rest_geom = obj_model.get_element_o3d()
     o3d.visualization.draw_geometries([rest_geom])
 
-    num_obs = 15
+    num_obs = 30
 
     value_vec = o3d.utility.DoubleVector(np.ones(obj_model.num_pts()))
 
@@ -75,7 +104,7 @@ if __name__ == "__main__":
     f_lst = []
 
     full_obs_seq = FullObsSeq()
-    for t in np.linspace(0.1, 2.0, num_obs):
+    for idx, t in enumerate(np.linspace(0.1, 2.0, num_obs)):
         
         start_time = time.time()
         sim.move_points(touch_idx, t*touch_u)
@@ -89,7 +118,7 @@ if __name__ == "__main__":
         u_gs_mat = np.zeros_like(all_pts)
         for i in [0, 1, 2]:
             u_gs_mat[:, i] = all_pts_beta @ u_all_mat[:, i]
-        np.save(f'out_data/u_gs_mat_{t:05.02f}.npy', u_gs_mat)
+        np.save(f'out_data/sim_tree_seq/u_new_gs_mat_{idx:03d}.npy', u_gs_mat)
 
         gt_pts = all_pts + u_gs_mat
         pcd = o3d.geometry.PointCloud()
