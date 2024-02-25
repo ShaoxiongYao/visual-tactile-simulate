@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
 import torch
+import scipy.sparse as scisp
 from sklearn.neighbors import NearestNeighbors, kneighbors_graph
 
 from .o3d_utils import create_motion_lines
@@ -116,6 +117,25 @@ class NodeGraph(GlobalDeformModel):
 
         # return beta_tsr shape: N x 3 x (3*num_nodes)
         return np.kron(beta_tsr[:, None, :], np.eye(3))
+
+    def get_sparse_beta(self, pts, rbf_w_max=0.2):
+        num_pts = pts.shape[0]
+
+        # pts shape: N x 3
+        eud_ary, idx_ary = self.node_knn.kneighbors(pts)
+
+        rbf_weights:np.ndarray = np.exp(-eud_ary/self.rbf_sig)
+        rbf_weights[rbf_weights < rbf_w_max] = 0.0
+
+        rbf_weights /= rbf_weights.sum(axis=1, keepdims=True) + 1e-5
+
+        row_idx = np.repeat(np.arange(num_pts), self.num_nns)
+        col_idx = idx_ary.reshape(-1)
+        data = rbf_weights.reshape(-1)
+
+        beta_tsr = scisp.csr_matrix((data, (row_idx, col_idx)), 
+                                    shape=(num_pts, self.num_nodes))
+        return beta_tsr
 
     def compute_edges(self, connect_pattern='knn', self_loop=False, reversable=True):
         """ Compute edges, return np.array of shape (num_edges, 2) """
