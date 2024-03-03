@@ -16,23 +16,35 @@ view_params = {
     "zoom" : 0.71999999999999997
 }
 
-num_pts = 3000
-# num_nns = 20
-nn_radius = 0.15
+# num_pts = 3000
+# # num_nns = 20
+# nn_radius = 0.15
 
-bar_mesh = o3d.geometry.TriangleMesh.create_cylinder(radius=0.1, height=10)
-bar_mesh.compute_vertex_normals()
-o3d.visualization.draw_geometries([bar_mesh])
+# bar_mesh = o3d.geometry.TriangleMesh.create_cylinder(radius=0.1, height=10)
+# bar_mesh.compute_vertex_normals()
+# o3d.visualization.draw_geometries([bar_mesh])
 
-bar_pcd = bar_mesh.sample_points_uniformly(num_pts)
-rest_pts = np.asarray(bar_pcd.points)
+# bar_pcd = bar_mesh.sample_points_uniformly(num_pts)
+# rest_pts = np.asarray(bar_pcd.points)
 
-neigh = skn.radius_neighbors_graph(rest_pts, nn_radius, mode='distance')
+# neigh = skn.radius_neighbors_graph(rest_pts, nn_radius, mode='distance')
+# connect_ary = np.array(neigh.nonzero()).T
+
+# fix_idx = np.where(rest_pts[:, 2] < -3)[0]
+# handle_idx = np.concatenate([select_points(bar_pcd), fix_idx])
+# handle_pts = rest_pts[handle_idx].copy()
+# handle_pts[0, :] += np.array([0.0, 3., -5.0])
+
+pcd = o3d.io.read_point_cloud('/home/motion/SuGaR/cropped_pcd.ply')
+rest_pts = np.asarray(pcd.points)
+num_pts = rest_pts.shape[0]
+
+bar_pcd = o3d.geometry.PointCloud()
+bar_pcd.points = o3d.utility.Vector3dVector(rest_pts)
+bar_pcd.paint_uniform_color([0.0, 0.0, 1.0])
+
+neigh = skn.radius_neighbors_graph(rest_pts, 0.1, mode='distance')
 connect_ary = np.array(neigh.nonzero()).T
-
-# neigh = skn.NearestNeighbors(n_neighbors=num_nns)
-# neigh.fit(rest_pts)
-# neighbor_ary = neigh.kneighbors(rest_pts, return_distance=False)
 
 line_set = o3d.geometry.LineSet()
 line_set.points = o3d.utility.Vector3dVector(rest_pts)
@@ -45,10 +57,10 @@ connect_lst = connect_ary.tolist()
 line_set.lines = o3d.utility.Vector2iVector(connect_lst)
 line_set.colors = o3d.utility.Vector3dVector(np.array([[0.0, 0.0, 1.0]]*len(connect_lst)))
 
-fix_idx = np.where(rest_pts[:, 2] < -3)[0]
+fix_idx = np.load('assets/small_green_fix_idx.npy')
 handle_idx = np.concatenate([select_points(bar_pcd), fix_idx])
 handle_pts = rest_pts[handle_idx].copy()
-handle_pts[0, :] += np.array([0.0, 3., -5.0])
+handle_pts[0, :] += np.array([0.0, 0.3, -0.3])
 
 # rest_pts = np.array([[0.0, 0.0, 0.0],[0.0, 0.0, 1.0], [0.0, 0.0, 2.0], [0.0, 0.0, 3.0], [0.0, 0.0, 4.0]])
 
