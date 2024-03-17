@@ -10,17 +10,6 @@ from vis_tac_sim.o3d_utils import create_arrow_lst, select_points
 
 np.set_printoptions(precision=3, suppress=True)
 
-num_nns = 10
-
-bar_mesh = o3d.geometry.TriangleMesh.create_cylinder(radius=0.001, height=0.1)
-bar_mesh.compute_vertex_normals()
-bar_mesh.paint_uniform_color([0.0, 1.0, 0.0])
-o3d.visualization.draw_geometries([bar_mesh])
-
-bar_pcd = bar_mesh.sample_points_uniformly(1000)
-bar_pcd.paint_uniform_color([0.0, 1.0, 0.0])
-o3d.visualization.draw_geometries([bar_pcd])
-
 # num_pts = 8
 # rest_pts = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], 
 #                      [1.0, 0.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0],
@@ -29,6 +18,7 @@ o3d.visualization.draw_geometries([bar_pcd])
 # num_pts = 20
 # rest_pts = np.random.rand(num_pts, 3)
 
+num_nns = 10
 pcd = o3d.io.read_point_cloud('/home/motion/SuGaR/cropped_pcd.ply')
 
 # rest_pts = np.load('assets/new_orange_tree_pts.npy')
@@ -54,10 +44,8 @@ neigh = skn.NearestNeighbors(n_neighbors=num_nns)
 neigh.fit(rest_pts)
 neighbor_ary = neigh.kneighbors(rest_pts, return_distance=False)
 
-# handle_idx = np.array([0, 1])
 fix_idx = np.load('assets/small_green_fix_idx.npy')
 handle_idx = np.concatenate([select_points(rest_pcd), fix_idx])
-# handle_idx = np.concatenate([[2350], fix_idx])
 
 # handle_idx = select_points(rest_pcd)
 handle_pts = rest_pts[handle_idx].copy()
@@ -141,17 +129,14 @@ for iter_idx in range(20):
     S = P.transpose(0, 2, 1) @ Q
     out = np.linalg.svd(S)
 
-    R = out[0] @ out[2]
+    R = (out[0] @ out[2]).transpose(0, 2, 1)
 
     RT_R = R.transpose(0, 2, 1) @ R
     assert np.allclose(RT_R, np.eye(3)[None, :, :])
 
     rot_mat = R
-    print('rot_mat shape:', rot_mat.shape)
 
-    print('rot_mat:', rot_mat[:10, :, :])
-
-    for i in range(0, num_pts, 40):
+    for i in [handle_idx[0]]:
         ref_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
         pt_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
         pt_frame.rotate(rot_mat[i])
