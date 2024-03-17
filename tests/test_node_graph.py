@@ -67,28 +67,28 @@ def prepare_sim_plant(rest_pts_fn, nn_radius):
 
 if __name__ == '__main__':
 
-    obj_name = 'bar_01'
-    num_pts = 3000
-    nn_radius = 0.15
-    rest_pts, connect_ary, handle_idx, handle_dir = prepare_sim_bar(num_pts, nn_radius)
-    rest_vis_pts = rest_pts.copy()
-    trans_rest_vis_pts = rest_vis_pts.copy()
-    H_mat = np.eye(4)
-    inv_H_mat = np.eye(4)
+    # obj_name = 'bar_01'
+    # num_pts = 3000
+    # nn_radius = 0.15
+    # rest_pts, connect_ary, handle_idx, handle_dir = prepare_sim_bar(num_pts, nn_radius)
+    # rest_vis_pts = rest_pts.copy()
+    # trans_rest_vis_pts = rest_vis_pts.copy()
+    # H_mat = np.eye(4)
+    # inv_H_mat = np.eye(4)
 
-    # obj_name = 'eucalyptus_leaves_00'
+    obj_name = 'fiddle_tree_leaf_03'
+    nn_radius = 0.10
     asset_dir = f'out_data/plant_assets/{obj_name}'
     Path(f'out_data/sim_{obj_name}').mkdir(parents=True, exist_ok=True)
 
-    # rest_vis_pts = np.load(f'{asset_dir}/all_pts.npy')
-    # H_mat = np.load(f'{asset_dir}/H_mat.npy')
-    # inv_H_mat = np.linalg.inv(H_mat)
+    rest_vis_pts = np.load(f'{asset_dir}/all_pts.npy')
+    H_mat = np.load(f'{asset_dir}/H_mat.npy')
+    inv_H_mat = np.linalg.inv(H_mat)
 
-    # trans_rest_vis_pts = (H_mat[:3, :3] @ rest_vis_pts.T + H_mat[:3, 3:4]).T
+    trans_rest_vis_pts = (H_mat[:3, :3] @ rest_vis_pts.T + H_mat[:3, 3:4]).T
     
-    # rest_pts_fn = f'{asset_dir}/rest_pts.npy'
-    # nn_radius = 0.10
-    # rest_pts, connect_ary, handle_idx, handle_dir = prepare_sim_plant(rest_pts_fn, nn_radius)
+    rest_pts_fn = f'{asset_dir}/rest_pts.npy'
+    rest_pts, connect_ary, handle_idx, handle_dir = prepare_sim_plant(rest_pts_fn, nn_radius)
 
     sim_out_dir = f'out_data/sim_{obj_name}'
     np.save(f'{sim_out_dir}/handle_idx.npy', handle_idx)
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     for i in range(10000):
         if i % 100 == 0:
             print('iter:', i)
-        handle_pts_tsr = torch.tensor(rest_pts[handle_idx, :] + handle_dir, 
+        handle_pts_tsr = torch.tensor(rest_pts[handle_idx, :] + (i/10000)*handle_dir, 
                                       dtype=torch.double, device='cuda')
         
         # for _ in range(3):
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
         energy_lst.append(energy.item())
 
-        if i % 200 == 0:
+        if i % 100 == 0:
             delta_vis_pts = node_graph.get_delta_pts().detach().cpu().numpy()
             curr_vis_pts = trans_rest_vis_pts + vis_beta @ delta_vis_pts
             curr_vis_pts = (inv_H_mat[:3, :3] @ curr_vis_pts.T + inv_H_mat[:3, 3:4]).T
@@ -127,22 +127,9 @@ if __name__ == '__main__':
             line_set.points = curr_pcd.points
             arrow_lst = create_arrow_lst(rest_pts[handle_idx], handle_pts_tsr.detach().cpu().numpy())
 
-            # coord_frame_lst = []
-            # for pt_i in range(0, num_pts, 200):
-            #     ref_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-            #     pt_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-            #     rot_mat:torch.Tensor = pp.Exp(rot_tsr[pt_i, :]) @ torch.eye(3)
+            # rot_frames_lst = node_graph.get_rot_frames()
 
-            #     pt_frame.rotate(rot_mat.detach().numpy())
-            #     pt_frame.translate(curr_pts_tsr[pt_i, :].detach().numpy())
-            #     pt_frame.paint_uniform_color([0.2, 0.9, 0.7])
-
-            #     ref_frame.translate(curr_pts_tsr[pt_i, :].detach().numpy())
-            #     ref_frame.paint_uniform_color([0.7, 0.2, 0.9])
-            #     coord_frame_lst.append(pt_frame)
-            #     coord_frame_lst.append(ref_frame)
-
-            o3d.visualization.draw_geometries([curr_pcd, line_set] + arrow_lst, **view_params)        
+            # o3d.visualization.draw_geometries([curr_pcd, line_set] + arrow_lst, **view_params)        
 
     plt.plot(energy_lst)
     plt.show()
