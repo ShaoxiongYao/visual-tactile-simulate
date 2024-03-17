@@ -98,8 +98,6 @@ if __name__ == "__main__":
 
     num_obs = 30
 
-    value_vec = o3d.utility.DoubleVector(np.ones(obj_model.num_pts()))
-
     u_lst = []
     f_lst = []
 
@@ -118,7 +116,7 @@ if __name__ == "__main__":
         u_gs_mat = np.zeros_like(all_pts)
         for i in [0, 1, 2]:
             u_gs_mat[:, i] = all_pts_beta @ u_all_mat[:, i]
-        np.save(f'out_data/sim_tree_seq/u_new_gs_mat_{idx:03d}.npy', u_gs_mat)
+        # np.save(f'out_data/sim_tree_seq/u_new_gs_mat_{idx:03d}.npy', u_gs_mat)
 
         gt_pts = all_pts + u_gs_mat
         pcd = o3d.geometry.PointCloud()
