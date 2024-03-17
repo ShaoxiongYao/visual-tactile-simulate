@@ -7,7 +7,7 @@ import sklearn.neighbors as skn
 from pypose.optim.strategy import Constant
 
 import context
-from vis_tac_sim.o3d_utils import select_points
+from vis_tac_sim.o3d_utils import select_points, create_arrow_lst
 
 view_params = {
     "front" : [ 0.97746411351068019, -0.20982603939514938, -0.023171965616350335 ],
@@ -35,15 +35,17 @@ view_params = {
 # handle_pts = rest_pts[handle_idx].copy()
 # handle_pts[0, :] += np.array([0.0, 3., -5.0])
 
-pcd = o3d.io.read_point_cloud('/home/motion/SuGaR/cropped_pcd.ply')
-rest_pts = np.asarray(pcd.points)
+# pcd = o3d.io.read_point_cloud('/home/motion/SuGaR/cropped_pcd.ply')
+# rest_pts = np.asarray(pcd.points)
+
+rest_pts = np.load('assets/eucalyptus_leaves_00.npy')
 num_pts = rest_pts.shape[0]
 
 bar_pcd = o3d.geometry.PointCloud()
 bar_pcd.points = o3d.utility.Vector3dVector(rest_pts)
 bar_pcd.paint_uniform_color([0.0, 0.0, 1.0])
 
-neigh = skn.radius_neighbors_graph(rest_pts, 0.1, mode='distance')
+neigh = skn.radius_neighbors_graph(rest_pts, 0.08, mode='distance')
 connect_ary = np.array(neigh.nonzero()).T
 
 line_set = o3d.geometry.LineSet()
@@ -57,7 +59,8 @@ connect_lst = connect_ary.tolist()
 line_set.lines = o3d.utility.Vector2iVector(connect_lst)
 line_set.colors = o3d.utility.Vector3dVector(np.array([[0.0, 0.0, 1.0]]*len(connect_lst)))
 
-fix_idx = np.load('assets/small_green_fix_idx.npy')
+# fix_idx = np.load('assets/small_green_fix_idx.npy')
+fix_idx = np.where(rest_pts[:, 2] < 0.5)[0]
 handle_idx = np.concatenate([select_points(bar_pcd), fix_idx])
 handle_pts = rest_pts[handle_idx].copy()
 handle_pts[0, :] += np.array([0.0, 0.3, -0.3])
@@ -103,18 +106,14 @@ for i in range(10000):
     start_time = time.time()
     energy = 0.0
     edges_diff = curr_pts_tsr[connect_ary[:, 0], :] - curr_pts_tsr[connect_ary[:, 1], :]
-    print('edges diff:', edges_diff)
     edges_rest = rest_pts_tsr[connect_ary[:, 0], :] - rest_pts_tsr[connect_ary[:, 1], :]
-    print('edges rest:', edges_rest)
     raw_edge_len = torch.norm(edges_rest, dim=1)
     edges_rest = pp.Exp(rot_tsr[connect_ary[:, 1], :]) @ edges_rest
     rot_edge_len = torch.norm(edges_rest, dim=1)
     assert torch.allclose(raw_edge_len, rot_edge_len)
-    print('edges rest:', edges_rest)
     energy = torch.sum((edges_diff - edges_rest) ** 2)
-    print('rot difference:', edges_diff - edges_rest)
-    print('energy value:', energy.item())
-    print('energy time:', time.time()-start_time)
+    print('energy:', energy.item()) 
+    print('time:', time.time() - start_time)
 
     optimizer.zero_grad()
     energy.backward()
@@ -128,8 +127,11 @@ for i in range(10000):
 
         line_set.points = o3d.utility.Vector3dVector(curr_pts_tsr.detach().numpy())
 
+        arrow_lst = create_arrow_lst(rest_pts_tsr[handle_idx].detach().numpy(), 
+                                     handle_pts_tsr.detach().numpy())
+
         coord_frame_lst = []
-        for pt_i in range(0, num_pts, 30):
+        for pt_i in range(0, num_pts, 200):
             ref_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
             pt_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
             rot_mat:torch.Tensor = pp.Exp(rot_tsr[pt_i, :]) @ torch.eye(3)
@@ -143,7 +145,7 @@ for i in range(10000):
             coord_frame_lst.append(pt_frame)
             coord_frame_lst.append(ref_frame)
 
-        o3d.visualization.draw_geometries([curr_bar_pcd, line_set] + coord_frame_lst, **view_params)        
+        o3d.visualization.draw_geometries([bar_pcd, curr_bar_pcd, line_set] + coord_frame_lst + arrow_lst)        
 
 plt.plot(energy_lst)
 plt.show()
