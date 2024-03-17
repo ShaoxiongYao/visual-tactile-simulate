@@ -50,8 +50,9 @@ def apply_transformation(source, R, t):
     return transformed_source
 
 if __name__ == '__main__':
-    exp_id = 'a1522578-8'
-    obj_id = 'fiddle_tree_leaf_01'
+    exp_id = 'e34fe1a5-f'
+    obj_id = 'fiddle_tree_leaf_03'
+    pts_src = 'all' # 'vis' or 'all'
 
     out_dir = f'out_data/plant_assets/{obj_id}'
     Path(out_dir).mkdir(parents=True, exist_ok=True)
@@ -64,22 +65,26 @@ if __name__ == '__main__':
     b_max = np.array([2.5,  1.0,  3.0])*4
 
     pcd_fn = f'{data_dir}/{exp_id}/point_cloud/iteration_30000/point_cloud.ply'
-    pcd = manual_prepare_points(pcd_fn)
+    all_pcd = manual_prepare_points(pcd_fn)
 
-    np.save(f'{out_dir}/all_pts.npy', np.array(pcd.points))
+    np.save(f'{out_dir}/all_pts.npy', np.array(all_pcd.points))
 
     pcd_fn = f'{data_dir}/{exp_id}/cropped_pcd.ply'
     vis_pcd = o3d.io.read_point_cloud(pcd_fn)
     vis_pcd.normals = o3d.utility.Vector3dVector(np.array([[0.0, 0.0, 0.0]]))
     print('vis number points:', len(vis_pcd.points))
 
-    vis_pcd, ind = vis_pcd.remove_statistical_outlier(nb_neighbors=40, std_ratio=1.0)
+    vis_pcd, ind = vis_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=1.0)
     vis_pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
     o3d.visualization.draw_geometries([vis_pcd])
 
-    select_idx = select_points(vis_pcd)
-    select_pts = np.asarray(vis_pcd.points)[select_idx]
-
+    if pts_src == 'all':
+        select_idx = select_points(all_pcd)
+        select_pts = np.asarray(all_pcd.points)[select_idx]
+    elif pts_src == 'vis':
+        select_idx = select_points(vis_pcd)
+        select_pts = np.asarray(vis_pcd.points)[select_idx]
+    
     select_pcd = o3d.geometry.PointCloud()
     select_pcd.points = o3d.utility.Vector3dVector(select_pts)
 
