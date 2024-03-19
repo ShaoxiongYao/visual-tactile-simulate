@@ -59,37 +59,51 @@ def voxel_carving(
     )
     print('number of voxels:', len(voxel_carving.get_voxels()))
 
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(np.zeros((1, 3)))
-
-    vis.add_geometry(pcd)
-    vis.add_geometry(voxel_carving)
-
     vis = o3d.visualization.Visualizer()
     vis.create_window(width=w, height=h, visible=False)
-
-    fn_lst = sorted(Path(sim_out_dir).glob('step*.npy'))
     
+    num_voxels_lst = []
+    fn_lst = sorted(Path(sim_out_dir).glob('step*.npy'))
+    for fn in fn_lst:    
+        pcd = o3d.geometry.PointCloud()
+        step_pts = np.load(fn)
+        pcd.points = o3d.utility.Vector3dVector(step_pts)
 
-    set_view_params(vis, view_params)
+        vis.add_geometry(pcd)
+        # vis.add_geometry(voxel_carving)
+        set_view_params(vis, view_params)
 
-    ctr = vis.get_view_control()
-    param = ctr.convert_to_pinhole_camera_parameters()
+        ctr = vis.get_view_control()
+        param = ctr.convert_to_pinhole_camera_parameters()
 
-    # capture depth image and make a point cloud
-    start_time = time.time()
-    vis.poll_events()
-    vis.update_renderer()
-    depth = vis.capture_depth_float_buffer(False)
-    print('capture depth time:', time.time() - start_time)
+        # capture depth image and make a point cloud
+        start_time = time.time()
+        vis.poll_events()
+        vis.update_renderer()
+        depth = vis.capture_depth_float_buffer(False)
+        print('capture depth time:', time.time() - start_time)
 
-    plt.imshow(depth)
+        # plt.imshow(depth)
+        # plt.axis('off')
+        # plt.savefig(f'{fn.stem}.png', bbox_inches='tight', pad_inches=0)
+        # plt.show()
+
+        start_time = time.time()
+        voxel_carving.carve_depth_map(o3d.geometry.Image(depth), param)
+        print('voxel carving time:', time.time() - start_time)
+        print('number of voxels:', len(voxel_carving.get_voxels()))
+        num_voxels_lst.append(len(voxel_carving.get_voxels()))
+
+        vis.remove_geometry(pcd)
+
+        coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
+        o3d.visualization.draw_geometries([voxel_carving, pcd, coord_frame], **view_params)
+
+    plt.clf()
+    plt.plot(num_voxels_lst)
+    plt.xlabel('step')
+    plt.ylabel('number of voxels')
     plt.show()
-
-    start_time = time.time()
-    voxel_carving.carve_depth_map(o3d.geometry.Image(depth), param)
-    print('voxel carving time:', time.time() - start_time)
-    print('number of voxels:', len(voxel_carving.get_voxels()))
 
     vis.destroy_window()
 
