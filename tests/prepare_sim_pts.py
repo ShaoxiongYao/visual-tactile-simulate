@@ -10,6 +10,9 @@ def manual_prepare_points(pcd_fn):
     pcd.normals = o3d.utility.Vector3dVector(np.array([[0.0, 0.0, 0.0]]))
     # coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
     # o3d.visualization.draw_geometries([pcd, coord_frame])
+    colors = np.array(pcd.colors)
+    colors = colors[:, ::-1]
+    pcd.colors = o3d.utility.Vector3dVector(colors)
     o3d.visualization.draw_geometries_with_editing([pcd])
     return pcd
 
@@ -51,7 +54,7 @@ def apply_transformation(source, R, t):
 
 if __name__ == '__main__':
     exp_id = 'e34fe1a5-f'
-    obj_id = 'fiddle_tree_leaf_03'
+    obj_id = 'fiddle_tree_leaf_04'
     pts_src = 'all' # 'vis' or 'all'
 
     out_dir = f'out_data/plant_assets/{obj_id}'
@@ -61,15 +64,15 @@ if __name__ == '__main__':
     # b_min = np.array([0.5, -1.0, 0.05])
     # b_max = np.array([2.5,  1.0,  3.0])
 
-    b_min = np.array([0.5, -1.0, 0.05])*4
-    b_max = np.array([2.5,  1.0,  3.0])*4
+    b_min = np.array([0.5, -1.0, 0.05])
+    b_max = np.array([2.5,  1.0,  3.0])
 
-    pcd_fn = f'{data_dir}/{exp_id}/point_cloud/iteration_30000/point_cloud.ply'
+    pcd_fn = f'/home/motion/Downloads/fiddle_leaf_apple_00.pcd'
     all_pcd = manual_prepare_points(pcd_fn)
 
     np.save(f'{out_dir}/all_pts.npy', np.array(all_pcd.points))
 
-    pcd_fn = f'{data_dir}/{exp_id}/cropped_pcd.ply'
+    pcd_fn = f'/home/motion/Downloads/fiddle_leaf_apple_cropped_00.ply'
     vis_pcd = o3d.io.read_point_cloud(pcd_fn)
     vis_pcd.normals = o3d.utility.Vector3dVector(np.array([[0.0, 0.0, 0.0]]))
     print('vis number points:', len(vis_pcd.points))
@@ -104,11 +107,18 @@ if __name__ == '__main__':
     print("Translation Vector:\n", t)
     print("Transformed Source Points:\n", transformed_source)
 
+    out_range = transformed_source[0, 0] - transformed_source[0, 1]
+    scale = 2.4 / out_range
+    print('scale:', scale)
+
+    np.save(f'{out_dir}/scale.npy', scale)
+
     H_mat = np.block([[R, t.reshape(-1, 1)],
                       [np.zeros((1, 3)), 1]])
     np.save(f'{out_dir}/H_mat.npy', H_mat)
 
     vis_pcd.transform(H_mat)
+    vis_pcd.scale(scale, center=(0.0, 0.0, 0.0))
     coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
     o3d.visualization.draw_geometries([vis_pcd, coord_frame])
 

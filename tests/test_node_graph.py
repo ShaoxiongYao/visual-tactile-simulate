@@ -28,6 +28,13 @@ view_params = {
     "zoom" : 0.61999999999999988
 }
 
+view_params = {	
+    "front" : [ 0.92533671872582346, -0.00977042279659638, 0.37902044247784583 ],
+    "lookat" : [ 0.50709886611279531, 0.2256379128268034, 0.99633593149129163 ],
+    "up" : [ -0.37856288616066625, 0.031629292431272216, 0.92503498803126549 ],
+    "zoom" : 0.079999999999999613
+}
+
 def prepare_sim_bar(num_pts, nn_radius):
 
     bar_mesh = o3d.geometry.TriangleMesh.create_cylinder(radius=0.1, height=10)
@@ -76,16 +83,18 @@ if __name__ == '__main__':
     # H_mat = np.eye(4)
     # inv_H_mat = np.eye(4)
 
-    obj_name = 'fiddle_tree_leaf_03'
+    obj_name = 'fiddle_tree_leaf_04'
     nn_radius = 0.10
     asset_dir = f'out_data/plant_assets/{obj_name}'
     Path(f'out_data/sim_{obj_name}').mkdir(parents=True, exist_ok=True)
 
     rest_vis_pts = np.load(f'{asset_dir}/all_pts.npy')
     H_mat = np.load(f'{asset_dir}/H_mat.npy')
+    scale = np.load(f'{asset_dir}/scale.npy')
     inv_H_mat = np.linalg.inv(H_mat)
 
     trans_rest_vis_pts = (H_mat[:3, :3] @ rest_vis_pts.T + H_mat[:3, 3:4]).T
+    trans_rest_vis_pts *= scale
     
     rest_pts_fn = f'{asset_dir}/rest_pts.npy'
     rest_pts, connect_ary, handle_idx, handle_dir = prepare_sim_plant(rest_pts_fn, nn_radius)
@@ -94,7 +103,7 @@ if __name__ == '__main__':
     np.save(f'{sim_out_dir}/handle_idx.npy', handle_idx)
     np.save(f'{sim_out_dir}/handle_dir.npy', handle_dir)
     
-    node_graph = NodeGraph(rest_pts, connect_ary, corotate=False, device='cuda')
+    node_graph = NodeGraph(rest_pts, connect_ary, corotate=True, device='cuda')
     vis_beta = node_graph.get_pts_beta(trans_rest_vis_pts)
 
     line_set = node_graph.get_line_set()
@@ -119,8 +128,8 @@ if __name__ == '__main__':
         if i % 100 == 0:
             delta_vis_pts = node_graph.get_delta_pts().detach().cpu().numpy()
             curr_vis_pts = trans_rest_vis_pts + vis_beta @ delta_vis_pts
-            curr_vis_pts = (inv_H_mat[:3, :3] @ curr_vis_pts.T + inv_H_mat[:3, 3:4]).T
-            np.save(f'{sim_out_dir}/step_{i:05d}.npy', curr_vis_pts)
+            # curr_vis_pts = (inv_H_mat[:3, :3] @ curr_vis_pts.T + inv_H_mat[:3, 3:4]).T
+            # np.save(f'{sim_out_dir}/step_{i:05d}.npy', curr_vis_pts)
 
             curr_pcd = node_graph.get_pcd(handle_idx, handle_pts_tsr)
 
@@ -129,7 +138,9 @@ if __name__ == '__main__':
 
             # rot_frames_lst = node_graph.get_rot_frames()
 
-            # o3d.visualization.draw_geometries([curr_pcd, line_set] + arrow_lst, **view_params)        
+            curr_vis_pcd = o3d.geometry.PointCloud()
+            curr_vis_pcd.points = o3d.utility.Vector3dVector(curr_vis_pts)
+            o3d.visualization.draw_geometries([curr_vis_pcd, line_set] + arrow_lst, **view_params)        
 
     plt.plot(energy_lst)
     plt.show()
