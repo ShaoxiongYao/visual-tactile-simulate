@@ -118,10 +118,12 @@ if __name__ == '__main__':
                                       dtype=torch.double, device='cuda')
         
         # for _ in range(3):
+        start_time = time.time()
         energy = node_graph.energy(handle_idx, handle_pts_tsr)
         optimizer.zero_grad()
         energy.backward()
         optimizer.step()
+        print('step time:', time.time() - start_time)
 
         energy_lst.append(energy.item())
 
@@ -138,9 +140,9 @@ if __name__ == '__main__':
 
             # rot_frames_lst = node_graph.get_rot_frames()
 
-            curr_vis_pcd = o3d.geometry.PointCloud()
-            curr_vis_pcd.points = o3d.utility.Vector3dVector(curr_vis_pts)
-            o3d.visualization.draw_geometries([curr_vis_pcd, line_set] + arrow_lst, **view_params)        
+            # curr_vis_pcd = o3d.geometry.PointCloud()
+            # curr_vis_pcd.points = o3d.utility.Vector3dVector(curr_vis_pts)
+            # o3d.visualization.draw_geometries([curr_vis_pcd, line_set] + arrow_lst, **view_params)        
 
     plt.plot(energy_lst)
     plt.show()
