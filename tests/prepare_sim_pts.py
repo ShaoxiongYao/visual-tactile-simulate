@@ -53,26 +53,24 @@ def apply_transformation(source, R, t):
     return transformed_source
 
 if __name__ == '__main__':
-    exp_id = 'e34fe1a5-f'
-    obj_id = 'fiddle_tree_leaf_04'
+    obj_id = 'eucalyptus_leaf_01'
     pts_src = 'all' # 'vis' or 'all'
 
     out_dir = f'out_data/plant_assets/{obj_id}'
     Path(out_dir).mkdir(parents=True, exist_ok=True)
-    data_dir = '/home/motion/gaussian-splatting/output'
 
     # b_min = np.array([0.5, -1.0, 0.05])
     # b_max = np.array([2.5,  1.0,  3.0])
 
-    b_min = np.array([0.5, -1.0, 0.05])
-    b_max = np.array([2.5,  1.0,  3.0])
+    b_min = np.array([0.0, -0.4, 0.01])
+    b_max = np.array([0.2,  0.4,  1.0])
 
-    pcd_fn = f'/home/motion/Downloads/fiddle_leaf_apple_00.pcd'
+    pcd_fn = f'/home/planck/plant-model/out_data/{obj_id}/step_000.pcd'
     all_pcd = manual_prepare_points(pcd_fn)
 
     np.save(f'{out_dir}/all_pts.npy', np.array(all_pcd.points))
 
-    pcd_fn = f'/home/motion/Downloads/fiddle_leaf_apple_cropped_00.ply'
+    pcd_fn = f'/home/planck/Downloads/eucalyptus_leaf_01_cropped.ply'
     vis_pcd = o3d.io.read_point_cloud(pcd_fn)
     vis_pcd.normals = o3d.utility.Vector3dVector(np.array([[0.0, 0.0, 0.0]]))
     print('vis number points:', len(vis_pcd.points))
@@ -91,9 +89,15 @@ if __name__ == '__main__':
     select_pcd = o3d.geometry.PointCloud()
     select_pcd.points = o3d.utility.Vector3dVector(select_pts)
 
+    # fix_pts = np.array([
+    #     [ 1.2, 1.2, -1.2, -1.2],
+    #     [-1.1, 1.1,  1.1, -1.1],
+    #     [ 0.0, 0.0,  0.0,  0.0],
+    # ])
+
     fix_pts = np.array([
-        [ 1.2, 1.2, -1.2, -1.2],
-        [-1.1, 1.1,  1.1, -1.1],
+        [ 0.1, 0.1, -0.1, -0.1],
+        [-0.225, 0.225,  0.225, -0.225],
         [ 0.0, 0.0,  0.0,  0.0],
     ])
 
@@ -108,17 +112,17 @@ if __name__ == '__main__':
     print("Transformed Source Points:\n", transformed_source)
 
     out_range = transformed_source[0, 0] - transformed_source[0, 1]
-    scale = 2.4 / out_range
-    print('scale:', scale)
+    # scale = 2.4 / out_range
+    # print('scale:', scale)
 
-    np.save(f'{out_dir}/scale.npy', scale)
+    # np.save(f'{out_dir}/scale.npy', scale)
 
     H_mat = np.block([[R, t.reshape(-1, 1)],
                       [np.zeros((1, 3)), 1]])
     np.save(f'{out_dir}/H_mat.npy', H_mat)
 
     vis_pcd.transform(H_mat)
-    vis_pcd.scale(scale, center=(0.0, 0.0, 0.0))
+    # vis_pcd.scale(scale, center=(0.0, 0.0, 0.0))
     coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
     o3d.visualization.draw_geometries([vis_pcd, coord_frame])
 
@@ -126,7 +130,7 @@ if __name__ == '__main__':
     bbox.color = (1, 0, 0)
     in_bound_idx = bbox.get_point_indices_within_bounding_box(vis_pcd.points)
     crop_pcd = vis_pcd.select_by_index(in_bound_idx)
-    crop_pcd = crop_pcd.voxel_down_sample(voxel_size=0.03)
+    crop_pcd = crop_pcd.voxel_down_sample(voxel_size=0.005)
 
     print('number of points:', len(crop_pcd.points))
 
