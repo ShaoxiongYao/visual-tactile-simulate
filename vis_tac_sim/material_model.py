@@ -127,22 +127,71 @@ class LinearTetraModel(IsotropicTetraModel):
 
         p0, p1, p2, p3 = p.split(3, dim=0)
         u0, u1, u2, u3 = u.split(3, dim=0)
+        # print('p0, p1, p2, p3:', p0, p1, p2, p3)
+        # print('u0, u1, u2, u3:', u0, u1, u2, u3)
 
         Dm = torch.vstack([p1-p0, p2-p0, p3-p0]).T
         Ds = Dm + torch.vstack([u1-u0, u2-u0, u3-u0]).T
+        # print('Dm:', Dm)
+        # print('Ds:', Ds)
 
         Dm_inv = torch.inverse(Dm)
 
         F = Ds @ Dm_inv
+        # print('F:', F)
         P = mu*(F + F.T - 2*I3) + lam*torch.trace(F - I3)*I3
 
         W = (1/6)*torch.det(Dm).abs()
+        # print('W:', W)
         H = -W*P @ Dm_inv.T
 
         f1, f2, f3 = H.T
         f0 = -(f1+f2+f3)
         return torch.cat([f0, f1, f2, f3])
     
+    def element_forces_batch(self, p_batch:torch.Tensor, u_batch:torch.Tensor, m_batch:torch.Tensor):
+        mu_batch, lam_batch = m_batch[:, 0], m_batch[:, 1]
+        mu_batch = mu_batch.view(-1, 1, 1)
+        lam_batch = lam_batch.view(-1, 1, 1)
+        I3 = torch.eye(3)
+
+        p0, p1, p2, p3 = p_batch[:, 0, :], p_batch[:, 1, :], p_batch[:, 2, :], p_batch[:, 3, :]
+        u0, u1, u2, u3 = u_batch[:, 0, :], u_batch[:, 1, :], u_batch[:, 2, :], u_batch[:, 3, :]
+
+        # print('p0, p1, p2, p3:', p0, p1, p2, p3)
+        # print('u0, u1, u2, u3:', u0, u1, u2, u3)
+    
+        Dm = torch.stack([p1-p0, p2-p0, p3-p0], dim=1)
+        Ds = Dm + torch.stack([u1-u0, u2-u0, u3-u0], dim=1)
+        Dm = Dm.transpose(1, 2)
+        Ds = Ds.transpose(1, 2)
+        # print('Dm:', Dm)
+        # print('Ds:', Ds)
+
+        Dm_inv = torch.inverse(Dm)
+
+        F = Ds @ Dm_inv
+        # print('F:', F)
+
+        P = mu_batch*(F + F.transpose(1, 2) - 2*I3) + \
+            lam_batch*torch.einsum('bii->b', F - I3).view(-1, 1, 1)*I3[None, :, :]
+        # print('P:', P)
+
+        W = (1/6)*torch.det(Dm).abs()
+        W = W.view(-1, 1, 1)
+        # print('W:', W)
+        H = -W*P @ Dm_inv.transpose(1, 2)
+
+        HT = H.transpose(1, 2)
+        f1, f2, f3 = HT[:, 0, :], HT[:, 1, :], HT[:, 2, :]
+        f0 = -(f1+f2+f3)
+
+        # print('f0:', f0.shape)
+        # print('f1:', f1.shape)
+        # print('f2:', f2.shape)
+        # print('f3:', f3.shape)
+
+        return torch.cat([f0, f1, f2, f3], dim=1)
 
 class CorotateTetraModel(IsotropicTetraModel):
     def __init__(self, config=None):
