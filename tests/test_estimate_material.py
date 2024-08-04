@@ -19,13 +19,14 @@ from vis_tac_sim.data import FullObsSeq
 if __name__ == '__main__':
     obj_name = '6polygon01'
 
-    # rest_points = np.load(f'assets/{obj_name}_points.npy')
-    # tetra_elements = np.load(f'assets/{obj_name}_tetra.npy')
-    rest_points = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
-    tetra_elements = np.array([[0, 1, 2, 3]])
+    rest_points = np.load(f'assets/{obj_name}_points.npy')
+    tetra_elements = np.load(f'assets/{obj_name}_tetra.npy')
+    # rest_points = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
+    # tetra_elements = np.array([[0, 1, 2, 3]])
 
     rest_points = torch.tensor(rest_points, dtype=torch.float32)
     deform = torch.rand(rest_points.shape)
+    tetra_tensor = torch.tensor(tetra_elements, dtype=torch.int64)
 
     material_model = LinearTetraModel()
 
@@ -33,19 +34,33 @@ if __name__ == '__main__':
     num_elements = tetra_elements.shape[0]
 
     # compute Jacobian from single element
-    p = torch.tensor(rest_points, dtype=torch.float32)
-    p = p.flatten()
-    u = torch.zeros_like(p)
-    u[0] = 1.0
-    print('u:', u)
-    m = torch.ones((2,), dtype=torch.float32)
     jac = torch.func.jacrev(material_model.element_forces, argnums=2, has_aux=False, 
                             chunk_size=None, _preallocate_and_copy=False)
-    jac_mat = jac(p, u, m)
-    print('jac_mat:', jac_mat)
-    print('jac_mat @ m', jac_mat @ m)
-    print('out:', material_model.element_forces(p, u, m))
-    input()
+
+    # p = torch.tensor(rest_points, dtype=torch.float32)
+    # p = p.flatten()
+    # u = torch.zeros_like(p)
+    # u[0] = 1.0
+    # print('u:', u)
+    # m = torch.ones((2,), dtype=torch.float32)
+    # jac_mat = jac(p, u, m)
+    # print('jac_mat:', jac_mat)
+    # print('jac_mat @ m', jac_mat @ m)
+    # print('out:', material_model.element_forces(p, u, m))
+    # input()
+
+    obj_jac_mat = torch.zeros(3*num_pts, 2*num_elements)
+    for i in range(num_elements):
+        tetra = tetra_elements[i]
+
+        p_i = rest_points[tetra]
+        u_i = deform[tetra]
+        m = torch.ones((2), dtype=torch.float32)
+        jac_mat = jac(p_i.flatten(), u_i.flatten(), m)
+
+        for j in range(4):
+            pt_idx = tetra[j]
+            obj_jac_mat[3*pt_idx:3*(pt_idx+1), 2*i:2*(i+1)] += jac_mat[3*j:3*(j+1), :]
 
     p = torch.zeros(num_elements, 4, 3)
     u = torch.zeros(num_elements, 4, 3)
@@ -53,12 +68,16 @@ if __name__ == '__main__':
         p[i] = rest_points[tetra_elements[i]]
         u[i] = deform[tetra_elements[i]]
     
-    batch_jac_mat = torch.zeros(num_elements, 12, 2)
-    for i in range(num_elements):
-        p_i = p[i].flatten()
-        u_i = u[i].flatten()
-        jac_mat = jac(p_i, u_i, m)
-        batch_jac_mat[i] = jac_mat
+    force = obj_jac_mat @ torch.ones((2*num_elements), dtype=torch.float32)
+    all_force = material_model.element_forces_batch(p, u, torch.ones((num_elements, 2), dtype=torch.float32))
+
+    f_hat_tsr = torch.zeros((num_pts, 3), dtype=torch.float32)
+    f_hat_tsr.index_add_(0, tetra_tensor.flatten(), all_force.reshape(-1, 3))
+
+    print('force shape:', force.shape)
+    print('f_hat_tsr shape:', f_hat_tsr.shape)
+    print('force:', force[:10])
+    print('f_hat_tsr:', f_hat_tsr[:3, :])
     input()
 
     m_gt = torch.ones((num_elements, 2), dtype=torch.float32)
