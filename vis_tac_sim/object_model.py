@@ -294,10 +294,7 @@ class ObjectModel:
         elem_p_tsr = elem_p_tsr.reshape(-1, 12)
         elem_u_tsr = elem_u_tsr.reshape(-1, 12)
         
-        start_time = time.time()
         all_jac_mat:torch.Tensor = vmap(fvm_jac, in_dims=(0, 0, 0))(elem_p_tsr, elem_u_tsr, material_values)
-        print('vmap jac time:', time.time()-start_time)
-        print('all_jac_mat:', all_jac_mat.shape)
 
         row_idx_lst, col_idx_lst, data_lst = [], [], []
         for i in range(num_elements):
