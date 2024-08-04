@@ -32,6 +32,8 @@ view_params = {
 
 num_seq = 100
 num_obs = 15
+touch_num = 10
+exp_id = 'exp_multi_touch'
 
 if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=True)
@@ -39,17 +41,41 @@ if __name__ == "__main__":
 
     obj_name = 'test_small_tree_00'
 
-    rest_pts = np.load(f'assets/{obj_name}_points.npy')
-    elements_lst = np.load(f'assets/{obj_name}_tetra.npy')
+    rest_pts:np.ndarray = np.load(f'assets/{obj_name}_points.npy')
+    elements_lst:np.ndarray = np.load(f'assets/{obj_name}_tetra.npy')
+
+    pv_tetra_mesh = pv.read(f'out_data/plant_assets/{obj_name}_.msh')
 
     obj_model = ObjectModel(rest_points=rest_pts, element_lst=elements_lst,
                             material_model=LinearTetraModel())
 
-    mu_s, lam_s = 1.0, 10.0
+    elements_features = torch.zeros(obj_model.num_ele(), 3)
+    for i in range(obj_model.num_ele()):
+        elements_features[i] = torch.tensor(rest_pts[elements_lst[i]].mean(axis=0))
+
+    # Uniform material assignment
+    # mu_s, lam_s = 1.0, 10.0
+    # material_values = obj_model.unit_material_values(dtype='list')
+    # material_values = [[mu_s*mu, lam_s*lam] for mu, lam in material_values]
+    
+    gt_linear_weight = torch.tensor([[0.0, 0.0], [0.0, 0.4], [-1.0, -0.1]], dtype=torch.float32)
+    material_values = elements_features @ gt_linear_weight + torch.tensor([8.0, 7.0])
+    print('material_values shape:', material_values.shape)
+
+    # Assign colors
+    pv_tetra_mesh["mu"] = material_values[:, 0].numpy()
+    pv_tetra_mesh["lam"] = material_values[:, 1].numpy()
+
+    # Plot with the specified colors
+    plotter = pv.Plotter()
+    plotter.add_mesh(pv_tetra_mesh, scalars="mu", show_edges=False, cmap="YlOrBr")
+    plotter.show()
+    plotter = pv.Plotter()
+    plotter.add_mesh(pv_tetra_mesh, scalars="lam", show_edges=False, cmap="YlOrBr")
+    plotter.show()
 
     start_time = time.time()
-    material_values = obj_model.unit_material_values(dtype='list')
-    material_values = [[mu_s*mu, lam_s*lam] for mu, lam in material_values]
+    
     sim = QuasiStaticSim(obj_model, curr_points=None, material_values=material_values)
     print('setup sim time:', time.time()-start_time)
 
@@ -60,7 +86,6 @@ if __name__ == "__main__":
     fix_idx = arg_sorted_z[:fix_num]
     allow_touch_idx = arg_sorted_z[-allow_touch_num:]
 
-    touch_num = 1
     touch_sampler = TouchSampler(obj_model.num_pts(), pts_std=0.01)
     touch_sampler.set_fix_idx(fix_idx)
 
@@ -76,8 +101,8 @@ if __name__ == "__main__":
     obj_pcd.colors = o3d.utility.Vector3dVector(colors)
     o3d.visualization.draw_geometries([obj_pcd])
 
-    Path(f'out_data/exp_sim_{obj_name}').mkdir(parents=True, exist_ok=True)
-    with open(f'out_data/exp_sim_{obj_name}/obj_model.pkl', 'wb') as f:
+    Path(f'out_data/{exp_id}_{obj_name}').mkdir(parents=True, exist_ok=True)
+    with open(f'out_data/{exp_id}_{obj_name}/obj_model.pkl', 'wb') as f:
         pickle.dump(obj_model, f)
 
     for seq_idx in range(num_seq):
@@ -121,7 +146,7 @@ if __name__ == "__main__":
 
             geom_lst = [rest_geom, curr_mesh] + arrow_lst1
 
-            # o3d.visualization.draw_geometries(geom_lst, **view_params)
+            o3d.visualization.draw_geometries(geom_lst, **view_params)
 
-        Path(f'out_data/exp_sim_{obj_name}/seq_{seq_idx:03d}').mkdir(parents=True, exist_ok=True)
-        full_obs_seq.save(f'out_data/exp_sim_{obj_name}/seq_{seq_idx:03d}')
+        Path(f'out_data/{exp_id}_{obj_name}/seq_{seq_idx:03d}').mkdir(parents=True, exist_ok=True)
+        full_obs_seq.save(f'out_data/{exp_id}_{obj_name}/seq_{seq_idx:03d}')
