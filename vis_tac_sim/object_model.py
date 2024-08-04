@@ -4,6 +4,7 @@ import open3d as o3d
 import torch
 import numpy as np
 from torch.func import vmap
+import time
 from scipy.sparse import coo_matrix, csc_matrix, csr_matrix
 from scipy.spatial import Delaunay
 from sklearn.neighbors import kneighbors_graph, radius_neighbors_graph
@@ -270,6 +271,45 @@ class ObjectModel:
                 obj_jac_mat[3*pt_idx:3*(pt_idx+1), 2*i:2*(i+1)] += jac_mat[3*j:3*(j+1), :]
 
         return obj_jac_mat
+
+    def force_vs_material_jacobian_batch(self, curr_points, material_values) -> csc_matrix:
+        assert self.material_model.m_dim == 2
+
+        # compute Jacobian from single element
+        fvm_jac = torch.func.jacrev(self.material_model.element_forces, argnums=2, has_aux=False, 
+                                    chunk_size=None, _preallocate_and_copy=False)
+        
+        num_pts = self.num_pts()
+        num_elements = self.num_ele()
+
+        rest_points = torch.tensor(self.rest_points, dtype=torch.float32)
+        deform = torch.tensor(curr_points - self.rest_points, dtype=torch.float32)
+        tetra_elements = np.array(self.element_lst)
+
+        elem_p_tsr = torch.zeros((num_elements, 4, 3), dtype=torch.float32)
+        elem_u_tsr = torch.zeros((num_elements, 4, 3), dtype=torch.float32)
+        for i in range(4):
+            elem_p_tsr[:, i] = rest_points[tetra_elements[:, i]]
+            elem_u_tsr[:, i] = deform[tetra_elements[:, i]]
+        elem_p_tsr = elem_p_tsr.reshape(-1, 12)
+        elem_u_tsr = elem_u_tsr.reshape(-1, 12)
+        
+        start_time = time.time()
+        all_jac_mat:torch.Tensor = vmap(fvm_jac, in_dims=(0, 0, 0))(elem_p_tsr, elem_u_tsr, material_values)
+        print('vmap jac time:', time.time()-start_time)
+        print('all_jac_mat:', all_jac_mat.shape)
+
+        row_idx_lst, col_idx_lst, data_lst = [], [], []
+        for i in range(num_elements):
+            tetra = self.element_lst[i]
+
+            for j in range(4):
+                pt_idx = tetra[j]
+                row_idx_lst.extend([3*pt_idx, 3*pt_idx, 3*pt_idx+1, 3*pt_idx+1, 3*pt_idx+2, 3*pt_idx+2])
+                col_idx_lst.extend([2*i, 2*i+1, 2*i, 2*i+1, 2*i, 2*i+1])
+                data_lst.extend(all_jac_mat[i, 3*j:3*(j+1), :].flatten().tolist())
+
+        return coo_matrix((data_lst, (row_idx_lst, col_idx_lst)), shape=(3*num_pts, 2*num_elements))
 
     def get_obj_pcd(self):
         obj_pcd = o3d.geometry.PointCloud()
