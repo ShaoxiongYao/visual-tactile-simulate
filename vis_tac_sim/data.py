@@ -67,6 +67,9 @@ class FullObsSeq(BaseObsSeq):
         else:
             return (self.u_all_lst[step_idx].reshape(-1, 3), 
                     self.f_all_lst[step_idx].reshape(-1, 3))
+    
+    def get_fix_idx(self, step_idx):
+        return self.fix_idx_lst[step_idx]
 
 
 class PartialObsSeq:

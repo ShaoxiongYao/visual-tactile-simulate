@@ -72,10 +72,10 @@ def create_vector_arrow(end, origin=np.array([0, 0, 0]), scale=1, color=[0.707, 
     return(mesh)
 
 
-def create_arrow_lst(p1_ary, p2_ary, **args):
+def create_arrow_lst(p1_ary, p2_ary, min_len=0.01, **args):
     arrow_lst = []
     for p1, p2 in zip(p1_ary, p2_ary):
-        if np.linalg.norm(p2-p1) > 0.01:
+        if np.linalg.norm(p2-p1) > min_len:
             arrow_lst.append(create_vector_arrow(p2, origin=p1, **args))
     return arrow_lst
 
