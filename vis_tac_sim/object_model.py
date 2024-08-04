@@ -242,6 +242,34 @@ class ObjectModel:
         sp_K_mat = assemble_K_mat(self.element_lst, material_values, self.material_model,
                                   self.rest_points, curr_points, sp_type='csc')
         return sp_K_mat
+    
+    def force_vs_material_jacobian(self, curr_points, material_values) -> csc_matrix:
+        assert self.material_model.m_dim == 2
+
+        # compute Jacobian from single element
+        fvm_jac = torch.func.jacrev(self.material_model.element_forces, argnums=2, has_aux=False, 
+                                    chunk_size=None, _preallocate_and_copy=False)
+        
+        num_pts = self.num_pts()
+        num_elements = self.num_ele()
+
+        rest_points = torch.tensor(self.rest_points, dtype=torch.float32)
+        deform = torch.tensor(curr_points - self.rest_points, dtype=torch.float32)
+
+        obj_jac_mat = torch.zeros(3*num_pts, 2*num_elements)
+        for i in range(num_elements):
+            tetra = self.element_lst[i]
+
+            p_i = rest_points[tetra]
+            u_i = deform[tetra]
+            m_i = material_values[i]
+            jac_mat = fvm_jac(p_i.flatten(), u_i.flatten(), m_i)
+
+            for j in range(4):
+                pt_idx = tetra[j]
+                obj_jac_mat[3*pt_idx:3*(pt_idx+1), 2*i:2*(i+1)] += jac_mat[3*j:3*(j+1), :]
+
+        return obj_jac_mat
 
     def get_obj_pcd(self):
         obj_pcd = o3d.geometry.PointCloud()
