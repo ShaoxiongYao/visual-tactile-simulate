@@ -39,12 +39,12 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=True)
     np.random.seed(1)
 
-    obj_name = 'test_small_tree_00'
+    obj_name = 'new_example_tree'
 
     rest_pts:np.ndarray = np.load(f'assets/{obj_name}_points.npy')
     elements_lst:np.ndarray = np.load(f'assets/{obj_name}_tetra.npy')
 
-    pv_tetra_mesh = pv.read(f'out_data/plant_assets/{obj_name}_.msh')
+    # pv_tetra_mesh = pv.read(f'out_data/plant_assets/{obj_name}_.msh')
 
     obj_model = ObjectModel(rest_points=rest_pts, element_lst=elements_lst,
                             material_model=LinearTetraModel())
@@ -63,16 +63,16 @@ if __name__ == "__main__":
     print('material_values shape:', material_values.shape)
 
     # Assign colors
-    pv_tetra_mesh["mu"] = material_values[:, 0].numpy()
-    pv_tetra_mesh["lam"] = material_values[:, 1].numpy()
+    # pv_tetra_mesh["mu"] = material_values[:, 0].numpy()
+    # pv_tetra_mesh["lam"] = material_values[:, 1].numpy()
 
     # Plot with the specified colors
-    plotter = pv.Plotter()
-    plotter.add_mesh(pv_tetra_mesh, scalars="mu", show_edges=False, cmap="YlOrBr")
-    plotter.show()
-    plotter = pv.Plotter()
-    plotter.add_mesh(pv_tetra_mesh, scalars="lam", show_edges=False, cmap="YlOrBr")
-    plotter.show()
+    # plotter = pv.Plotter()
+    # plotter.add_mesh(pv_tetra_mesh, scalars="mu", show_edges=False, cmap="YlOrBr")
+    # plotter.show()
+    # plotter = pv.Plotter()
+    # plotter.add_mesh(pv_tetra_mesh, scalars="lam", show_edges=False, cmap="YlOrBr")
+    # plotter.show()
 
     start_time = time.time()
     
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     print('setup sim time:', time.time()-start_time)
 
     arg_sorted_z = np.argsort(obj_model.rest_points[:, 2])
-    fix_num = int(0.10*obj_model.num_pts())
+    fix_num = int(0.05*obj_model.num_pts())
     allow_touch_num = int(0.85*obj_model.num_pts())
 
     fix_idx = arg_sorted_z[:fix_num]
